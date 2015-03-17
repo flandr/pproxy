@@ -413,6 +413,8 @@ static int move_buffers(struct bufferevent *src, struct bufferevent *dst) {
 }
 
 static void target_event_cb(struct bufferevent *bev, int16_t what, void *ctx) {
+    (void) bev;
+
     if (what & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
         struct pproxy_connection *conn = (struct pproxy_connection *) ctx;
         pproxy_connection_free(conn);
@@ -422,13 +424,11 @@ static void target_event_cb(struct bufferevent *bev, int16_t what, void *ctx) {
     }
 }
 
-static void source_last_write_cb(struct bufferevent *be, void *ctx) {
+static void source_last_write_cb(struct bufferevent *bev, void *ctx) {
+    (void) bev;
+
     struct pproxy_connection *conn = (struct pproxy_connection*) ctx;
     pproxy_connection_free(conn);
-}
-
-static size_t buffer_extents(struct evbuffer *buffer) {
-    return evbuffer_peek(buffer, -1, 0, 0, 0);
 }
 
 static int is_http_error(struct http_parser *parser) {
@@ -516,6 +516,8 @@ static void target_read_cb(struct bufferevent *be, void *ctx) {
 
 static void direct_source_event_cb(struct bufferevent *bev, int16_t what,
         void *ctx) {
+    (void) bev;
+
     if (what & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
         struct pproxy_connection *conn = (struct pproxy_connection *) ctx;
         pproxy_connection_free(conn);
@@ -526,6 +528,8 @@ static void direct_source_event_cb(struct bufferevent *bev, int16_t what,
 }
 
 static void direct_source_read_cb(struct bufferevent *bev, void *ctx) {
+    (void) bev;
+
     struct pproxy_connection *conn = (struct pproxy_connection*) ctx;
     if (move_buffers(conn->source_state.bev, conn->target_state.bev)) {
         log_debug("Error forwarding to direct proxy client\n");
@@ -535,6 +539,8 @@ static void direct_source_read_cb(struct bufferevent *bev, void *ctx) {
 
 static void direct_target_event_cb(struct bufferevent *bev, int16_t what,
         void *ctx) {
+    (void) bev;
+
     if (what & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
         struct pproxy_connection *conn = (struct pproxy_connection *) ctx;
         pproxy_connection_free(conn);
@@ -545,6 +551,8 @@ static void direct_target_event_cb(struct bufferevent *bev, int16_t what,
 }
 
 static void direct_target_read_cb(struct bufferevent *bev, void *ctx) {
+    (void) bev;
+
     struct pproxy_connection *conn = (struct pproxy_connection*) ctx;
     if (move_buffers(conn->target_state.bev, conn->source_state.bev)) {
         pproxy_connection_free(conn);
@@ -557,6 +565,8 @@ static void send_direct_ok_response(struct pproxy_connection *conn) {
 }
 
 static void source_event_cb(struct bufferevent *bev, int16_t what, void *ctx) {
+    (void) bev;
+
     if (what & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
         struct pproxy_connection *conn = (struct pproxy_connection *) ctx;
         pproxy_connection_free(conn);
@@ -572,15 +582,6 @@ static int is_direct_state(enum pproxy_connection_state state) {
 
 static inline size_t min(size_t x, size_t y) {
     return x > y ? y : x;
-}
-
-static inline size_t total(struct evbuffer_iovec *extents, size_t cnt) {
-    size_t ret = 0;
-    size_t i = 0;
-    for (; i < cnt; ++i) {
-        ret += extents[i].iov_len;
-    }
-    return ret;
 }
 
 static size_t write_atmost(struct evbuffer *buffer, size_t len,
