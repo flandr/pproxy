@@ -25,9 +25,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "pproxy/pproxy.h"
-}
 
 #include "util.h"
 
