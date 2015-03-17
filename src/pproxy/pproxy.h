@@ -25,6 +25,10 @@
 
 #include <inttypes.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** pproxy library handle. */
 struct pproxy;
 
@@ -77,5 +81,9 @@ int pproxy_get_port(struct pproxy *handle, int16_t *port);
 
 /** @return non-zero if the pproxy server is running. */
 int pproxy_running(struct pproxy *handle);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PPROXY_PPROXY_H_ */
