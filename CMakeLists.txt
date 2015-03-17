@@ -22,7 +22,7 @@ endif (NOT CMAKE_BUILD_TYPE)
 include(ExternalProject)
 include(External_gtest)
 include(External_http-parser)
-include(External_libevent)
+include(External_LibEvent)
 
 # Use C++11 when building C++ code
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
