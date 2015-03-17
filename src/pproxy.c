@@ -51,6 +51,10 @@ static int terminated(struct pproxy *handle) {
 
 static void listener_cb(struct evconnlistener* listener, int fd,
         struct sockaddr *saddr, int saddr_len, void *ctx) {
+    (void) listener;
+    (void) saddr;
+    (void) saddr_len;
+
     struct pproxy *handle = (struct pproxy*) ctx;
 
     struct pproxy_connection *conn = NULL;
