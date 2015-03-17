@@ -1,6 +1,8 @@
 Pico Proxy
 ==========
 
+[![Build Status](https://travis-ci.org/flandr/pproxy.svg?branch=master)](https://travis-ci.org/flandr/pproxy)
+
 Pico Proxy is a tiny-featured HTTP proxy server library. It is intended for use
 in environments where a programmatically controllable proxy server is needed
 (e.g. to test HTTP proxy client code). Don't expect too much out of it.
