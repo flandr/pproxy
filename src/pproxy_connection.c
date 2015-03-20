@@ -580,7 +580,7 @@ static int is_direct_state(enum pproxy_connection_state state) {
     return state == CONN_DIRECT_PARSING || state == CONN_DIRECT;
 }
 
-static inline size_t min(size_t x, size_t y) {
+static size_t xplat_min(size_t x, size_t y) {
     return x > y ? y : x;
 }
 
@@ -602,7 +602,7 @@ static size_t write_atmost(struct evbuffer *buffer, size_t len,
         size_t orig = remain;
         int i = 0;
         for (; i < 2 && remain > 0; ++i) {
-            size_t w = min(extents[i].iov_len, remain);
+            size_t w = xplat_min(extents[i].iov_len, remain);
             bufferevent_write(bev, extents[0].iov_base, w);
             remain -= w;
         }

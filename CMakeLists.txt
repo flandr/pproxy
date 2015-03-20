@@ -3,6 +3,13 @@ project(pproxy C CXX)
 # Required CMake version
 cmake_minimum_required(VERSION 2.8)
 
+if (WIN32)
+  # Windows library searches for libevent
+  set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+endif (WIN32)
+
+
 # Module search path
 set(CMAKE_MODULE_PATH
     ${CMAKE_SOURCE_DIR}/cmake

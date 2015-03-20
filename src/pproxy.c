@@ -22,13 +22,16 @@
 
 #if !defined(_WIN32)
 #include <arpa/inet.h>
-#endif
-
 #include <netinet/in.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#else
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
+
+#include <stdlib.h>
+#include <string.h>
 
 #include <event2/bufferevent.h>
 #include <event2/dns.h>
