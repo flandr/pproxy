@@ -26,6 +26,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #else
+#include <io.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #endif
@@ -42,9 +43,15 @@
 #include "pproxy/pproxy.h"
 #include "pproxy-internal.h"
 
+#if defined(_WIN32)
+#define FENCE MemoryBarrier
+#else
+#define FENCE __sync_synchronize
+#endif
+
 static int get_state(struct pproxy *handle) {
     // TODO: cross platform / use modern C11 atomic intrinsics
-    __sync_synchronize();
+    FENCE();
     return handle->run_state;
 }
 
@@ -219,7 +226,7 @@ int pproxy_start(struct pproxy *handle) {
     }
 
     handle->run_state = PROXY_RUNNING;
-    __sync_synchronize();
+    FENCE();
 
     /* Run the event loop until interrupted. We loop to guard against
        premature termination of some event dispatch backends. For example, the
@@ -235,7 +242,7 @@ int pproxy_start(struct pproxy *handle) {
 static void terminate(struct pproxy *handle) {
     // TODO: cross platform / use modern C11 atomic intrinsics
     handle->run_state = PROXY_TERMINATED;
-    __sync_synchronize();
+    FENCE();
 }
 
 void pproxy_stop(struct pproxy *handle) {
