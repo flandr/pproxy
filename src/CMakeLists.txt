@@ -21,7 +21,14 @@ set(libpproxy_SRCS
 # Set the include directories
 include_directories(
     ${WhatTheEvent_PUBLIC_INCLUDE_DIRS}
+    ${LibEvent_INCLUDE_DIR}
 )
+
+if (WIN32)
+  include_directories(
+    ${LibEvent_WIN32_INCLUDE_DIR}
+  )
+endif (WIN32)
 
 # Main library targets
 add_library(${pproxy_SHARED_LIBRARY} SHARED ${libpproxy_SRCS})
@@ -41,11 +48,15 @@ add_library(${pproxy_SHARED_LIBRARY} SHARED ${libpproxy_SRCS})
 # Link dependencies
 target_link_libraries(${pproxy_SHARED_LIBRARY}
     ${LibEvent_LIBRARY}
-    # Uh oh, win32?
-    ${LibEvent_PTHREADS_LIBRARY}
     http_parser
     ${EXTRA_LIBS}
 )
+
+if (NOT WIN32)
+  target_link_libraries(${pproxy_SHARED_LIBRARY}
+    ${LibEvent_PTHREADS_LIBRARY}
+  )
+endif (NOT WIN32)
 
 # Installation
 install(TARGETS
