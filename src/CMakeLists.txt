@@ -33,18 +33,6 @@ endif (WIN32)
 # Main library targets
 add_library(${pproxy_SHARED_LIBRARY} SHARED ${libpproxy_SRCS})
 
-# Apple frameworks
-#IF(APPLE)
-#INCLUDE_DIRECTORIES ( /Developer/Headers/FlatCarbon )
-#FIND_LIBRARY(CARBON_LIBRARY Carbon)
-#FIND_LIBRARY(APP_SERVICES_LIBRARY ApplicationServices )
-#MARK_AS_ADVANCED (CARBON_LIBRARY
-#APP_SERVICES_LIBRARY)
-#SET(EXTRA_LIBS
-#${CARBON_LIBRARY}
-#${APP_SERVICES_LIBRARY})
-#ENDIF (APPLE)
-
 # Link dependencies
 target_link_libraries(${pproxy_SHARED_LIBRARY}
     ${LibEvent_LIBRARY}
