@@ -59,7 +59,7 @@ static int terminated(struct pproxy *handle) {
     return get_state(handle) == PROXY_TERMINATED;
 }
 
-static void listener_cb(struct evconnlistener* listener, int fd,
+static void listener_cb(struct evconnlistener* listener, evutil_socket_t fd,
         struct sockaddr *saddr, int saddr_len, void *ctx) {
     (void) listener;
     (void) saddr;
