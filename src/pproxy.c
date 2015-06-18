@@ -172,17 +172,6 @@ int pproxy_init(struct pproxy **handle, const char *bind_address,
     return -1;
 }
 
-int pproxy_set_callbacks(struct pproxy *handle,
-        const struct pproxy_callbacks *callbacks) {
-    if (!handle) {
-        return -1;
-    }
-
-    handle->callbacks.on_connect = callbacks ? callbacks->on_connect : NULL;
-
-    return 0;
-}
-
 void pproxy_free(struct pproxy *handle) {
     if (!handle) {
         return;

@@ -30,6 +30,7 @@
 #include <event2/event.h>
 #include <http_parser.h>
 
+#include "pproxy/callbacks.h"
 #include "pproxy/pproxy.h"
 
 #if !defined(NDEBUG)
@@ -93,8 +94,20 @@ struct pproxy_connection {
     struct pproxy_target_state target_state;
 };
 
+/* handle for deferrable connection state */
+struct pproxy_connection_handle {
+    struct pproxy_connection *connection;
+    enum pproxy_connection_state next_state;
+    struct timeval delay;
+};
+
 int pproxy_connection_init(struct pproxy *handle, int fd,
     struct pproxy_connection **conn);
 void pproxy_connection_free(struct pproxy_connection *conn);
+
+int pproxy_connection_handle_init(struct pproxy_connection *conn,
+    struct pproxy_connection_handle **handle);
+void pproxy_connection_handle_free(struct pproxy_connection_handle *handle);
+int pproxy_connection_handle_has_delay(struct pproxy_connection_handle *handle);
 
 #endif /* PPROXY_INTERNAL_H_ */

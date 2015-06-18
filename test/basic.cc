@@ -25,6 +25,7 @@
 
 #include <gtest/gtest.h>
 
+#include "pproxy/callbacks.h"
 #include "pproxy/pproxy.h"
 
 #include "util.h"
@@ -151,7 +152,7 @@ TEST_F(PproxyTest, TestPut) {
 }
 
 int called = 0;
-static void connectCallback(struct pproxy *) {
+static void connectCallback(struct pproxy_connection_handle *) {
     ++called;
 }
 

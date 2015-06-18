@@ -180,6 +180,24 @@ static int set_connection_state_recv(struct pproxy_connection *conn) {
     return 0;
 }
 
+static void delayed_recv_cb(int sock, short which, void *arg) {
+    struct pproxy_connection_handle *handle =
+        (struct pproxy_connection_handle*) arg;
+    set_connection_state_recv(handle->connection);
+    pproxy_connection_handle_free(handle);
+}
+
+static int set_connection_state_recv_after_delay(struct pproxy_connection *conn,
+        struct pproxy_connection_handle *cb_handle) {
+    assert(conn == cb_handle->connection);
+
+    struct event_base *base = bufferevent_get_base(conn->source_state.bev);
+    struct event *ev = evtimer_new(base, delayed_recv_cb, cb_handle);
+    evtimer_add(ev, &cb_handle->delay);
+
+    return 0;
+}
+
 static int set_connection_state_connecting(struct pproxy_connection *conn,
         const char *host, uint16_t port) {
     assert(conn->state == CONN_RECV);
@@ -766,11 +784,23 @@ int pproxy_connection_init(struct pproxy *handle, int fd,
             break;
         }
 
+        struct pproxy_connection_handle *cb_handle = NULL;
+
         if (handle->callbacks.on_connect) {
-            (*handle->callbacks.on_connect)(handle);
+            if (pproxy_connection_handle_init(ret, &cb_handle)) {
+                break;
+            }
+            (*handle->callbacks.on_connect)(cb_handle);
         }
 
-        set_connection_state_recv(ret);
+        if (pproxy_connection_handle_has_delay(cb_handle)) {
+            set_connection_state_recv_after_delay(ret, cb_handle);
+        } else {
+            if (cb_handle) {
+                pproxy_connection_handle_free(cb_handle);
+            }
+            set_connection_state_recv(ret);
+        }
         *conn = ret;
         return 0;
     }
