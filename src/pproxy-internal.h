@@ -30,6 +30,8 @@
 #include <event2/event.h>
 #include <http_parser.h>
 
+#include "pproxy/pproxy.h"
+
 #if !defined(NDEBUG)
 #define log_debug(...) fprintf(stderr, __VA_ARGS__)
 #else
@@ -45,6 +47,7 @@ struct pproxy {
     struct evdns_base *dns_base;
     struct evconnlistener *listener;
     int run_state;
+    struct pproxy_callbacks callbacks;
 };
 
 struct conn_handle;

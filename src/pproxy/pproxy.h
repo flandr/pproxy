@@ -47,6 +47,22 @@ struct pproxy;
  */
 int pproxy_init(struct pproxy **handle, const char *bind_address, int16_t port);
 
+typedef void (*pproxy_general_cb)(struct pproxy *handle);
+
+struct pproxy_callbacks {
+    pproxy_general_cb on_connect;
+};
+
+/**
+ * Set or clear callbacks.
+ *
+ * @param handle the pproxy handle
+ * @param callbacks the callbacks, or NULL to clear all callbacks
+ * @return 0 on success, -1 on error
+ */
+int pproxy_set_callbacks(struct pproxy *handle,
+    const struct pproxy_callbacks *callbacks);
+
 /**
  * Releases the pproxy instance.
  *

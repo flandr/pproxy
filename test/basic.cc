@@ -150,4 +150,25 @@ TEST_F(PproxyTest, TestPut) {
     ASSERT_EQ(eret, pret);
 }
 
+int called = 0;
+static void connectCallback(struct pproxy *) {
+    ++called;
+}
+
+TEST_F(PproxyTest, TestConnectCallback) {
+    EchoServer echo;
+    echo.start();
+
+    struct pproxy_callbacks callbacks = { connectCallback };
+
+    ASSERT_EQ(0, pproxy_set_callbacks(handle, &callbacks));
+    PproxyServer proxy(handle);
+    proxy.start();
+
+    HttpClient proxyClient("127.0.0.1", echo.port(), proxy.port());
+    auto ret = proxyClient.get("");
+    ASSERT_EQ(200, ret.first);
+    ASSERT_EQ(1, called);
+}
+
 } // test namespace

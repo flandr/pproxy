@@ -766,6 +766,10 @@ int pproxy_connection_init(struct pproxy *handle, int fd,
             break;
         }
 
+        if (handle->callbacks.on_connect) {
+            (*handle->callbacks.on_connect)(handle);
+        }
+
         set_connection_state_recv(ret);
         *conn = ret;
         return 0;
