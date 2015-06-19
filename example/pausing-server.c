@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
         reqCompleteCallback };
 
     pproxy_set_callbacks(handle, &callbacks);
-    printf("\n---> each CONNECT will pause for 30 seconds <---\n");
+    printf("\n---> each request will pause for 30 seconds <---\n");
 
     /* Well, now it's listening... */
     int rc = pproxy_start(handle);
