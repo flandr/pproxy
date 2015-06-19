@@ -304,6 +304,25 @@ static int set_connection_state_direct(struct pproxy_connection *conn) {
     return 0;
 }
 
+static void delayed_direct_cb(int sock, short which, void *arg) {
+    struct pproxy_connection_handle *handle =
+        (struct pproxy_connection_handle*) arg;
+    set_connection_state_direct(handle->connection);
+    pproxy_connection_handle_free(handle);
+}
+
+static int set_connection_state_direct_after_delay(
+        struct pproxy_connection *conn,
+        struct pproxy_connection_handle *cb_handle) {
+    assert(conn == cb_handle->connection);
+
+    struct event_base *base = bufferevent_get_base(conn->source_state.bev);
+    struct event *ev = evtimer_new(base, delayed_direct_cb, cb_handle);
+    evtimer_add(ev, &cb_handle->delay);
+
+    return 0;
+}
+
 /* Connects to the target host and initializes transfer structures. */
 static int set_connection_target(struct pproxy_connection *conn,
         const char *host, size_t host_len, uint16_t port) {
@@ -336,8 +355,21 @@ static int source_message_complete(struct http_parser *parser) {
     case CONN_RECV_FORWARD:
         set_connection_state_forward(conn);
         break;
-    case CONN_DIRECT_PARSING:
-        set_connection_state_direct(conn);
+    case CONN_DIRECT_PARSING: {
+        struct pproxy_connection_handle *cb_handle = NULL;
+        if (conn->handle->callbacks.on_direct_connect) {
+            if (!pproxy_connection_handle_init(conn, &cb_handle)) {
+                (*conn->handle->callbacks.on_direct_connect)(cb_handle);
+            }
+        }
+
+        if (pproxy_connection_handle_has_delay(cb_handle)) {
+            set_connection_state_direct_after_delay(conn, cb_handle);
+        } else {
+            set_connection_state_direct(conn);
+        }
+
+        }
         break;
     default:
         assert(0 && "Unexpected state in message_complete_cb");

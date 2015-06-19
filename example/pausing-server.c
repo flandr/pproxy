@@ -38,7 +38,7 @@ static void connectCallback(struct pproxy_connection_handle *handle) {
     tm = localtime(&tv.tv_sec);
 
     strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S %Z", tm);
-    fprintf(stderr, "%s: pausing connection for 30 seconds...\n", buf);
+    fprintf(stderr, "%s: pausing post-CONNECT for 30 seconds...\n", buf);
 
     struct timeval pause = { 30, 0 };
     pproxy_conn_insert_pause(handle, &pause);
@@ -59,10 +59,10 @@ int main(int argc, char **argv) {
 
     printf("pproxy is listening on 127.0.0.1:%hu\n", port);
 
-    struct pproxy_callbacks callbacks =  { connectCallback };
+    struct pproxy_callbacks callbacks =  { NULL, connectCallback };
 
     pproxy_set_callbacks(handle, &callbacks);
-    printf("\n---> each connection will pause for 30 seconds <---\n");
+    printf("\n---> each CONNECT will pause for 30 seconds <---\n");
 
     /* Well, now it's listening... */
     int rc = pproxy_start(handle);

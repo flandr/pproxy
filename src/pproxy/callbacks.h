@@ -37,6 +37,8 @@ typedef void (*pproxy_general_cb)(struct pproxy_connection_handle *conn);
 struct pproxy_callbacks {
     /* Fired on initial connection from a proxy client. */
     pproxy_general_cb on_connect;
+    /* Fired when transitining to direct forwarding after CONNECT. */
+    pproxy_general_cb on_direct_connect;
 };
 
 /**

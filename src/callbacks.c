@@ -34,7 +34,12 @@ int pproxy_set_callbacks(struct pproxy *handle,
         return -1;
     }
 
-    handle->callbacks.on_connect = callbacks ? callbacks->on_connect : NULL;
+    if (!callbacks) {
+        memset(&handle->callbacks, 0, sizeof(handle->callbacks));
+        return 0;
+    }
+
+    handle->callbacks = *callbacks;
 
     return 0;
 }
