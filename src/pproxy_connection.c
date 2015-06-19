@@ -49,6 +49,8 @@ static void drive_request(struct pproxy_connection *conn);
 
 static int set_connection_state_recv(struct pproxy_connection *conn);
 static int set_connection_state_forward(struct pproxy_connection *conn);
+static int set_connection_state_forward_after_delay(
+    struct pproxy_connection *conn);
 static int set_connection_state_direct(struct pproxy_connection *conn);
 
 static void delayed_transition_cb(int sock, short which, void *arg) {
@@ -69,7 +71,14 @@ static void set_connection_state_after_delay(
         cb_handle->transition = set_connection_state_direct;
         break;
     case CONN_FORWARD:
-        cb_handle->transition = set_connection_state_forward;
+        /* Need to disable source processing or this won't block the request
+         * from completing. This does mean that we need to buffer the entire
+         * response received from the target; and alternative approach might
+         * be to clobber the target's events but that would race with completion
+         * of the response. */
+        bufferevent_disable(cb_handle->connection->source_state.bev,
+            EV_READ | EV_WRITE);
+        cb_handle->transition = set_connection_state_forward_after_delay;
         break;
     default:
         assert(0 && "Not supported");
@@ -275,6 +284,17 @@ static int set_connection_state_recv_forward(struct pproxy_connection *conn,
 static int set_connection_state_forward(struct pproxy_connection *conn) {
     assert(conn->state == CONN_RECV_FORWARD);
     conn->state = CONN_FORWARD;
+
+    return 0;
+}
+
+static int set_connection_state_forward_after_delay(
+        struct pproxy_connection *conn) {
+    assert(conn->state == CONN_RECV_FORWARD);
+    conn->state = CONN_FORWARD;
+
+    /* In the delay case, we've shut down processing of the source bev. */
+    bufferevent_enable(conn->source_state.bev, EV_READ | EV_WRITE);
 
     return 0;
 }

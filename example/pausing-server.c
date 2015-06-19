@@ -44,6 +44,21 @@ static void connectCallback(struct pproxy_connection_handle *handle) {
     pproxy_conn_insert_pause(handle, &pause);
 }
 
+static void reqCompleteCallback(struct pproxy_connection_handle *handle) {
+    struct timeval tv;
+    struct tm *tm;
+    char buf[64];
+
+    gettimeofday(&tv, NULL);
+    tm = localtime(&tv.tv_sec);
+
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S %Z", tm);
+    fprintf(stderr, "%s: pausing response for 30 seconds...\n", buf);
+
+    struct timeval pause = { 30, 0 };
+    pproxy_conn_insert_pause(handle, &pause);
+}
+
 int main(int argc, char **argv) {
     struct pproxy *handle = 0;
     if (pproxy_init(&handle, "127.0.0.1", 31337)) {
@@ -59,7 +74,8 @@ int main(int argc, char **argv) {
 
     printf("pproxy is listening on 127.0.0.1:%hu\n", port);
 
-    struct pproxy_callbacks callbacks =  { NULL, connectCallback };
+    struct pproxy_callbacks callbacks =  { NULL, connectCallback,
+        reqCompleteCallback };
 
     pproxy_set_callbacks(handle, &callbacks);
     printf("\n---> each CONNECT will pause for 30 seconds <---\n");
