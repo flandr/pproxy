@@ -56,13 +56,16 @@ static int set_connection_state_direct(struct pproxy_connection *conn);
 static void delayed_transition_cb(int sock, short which, void *arg) {
     struct pproxy_connection_handle *handle =
         (struct pproxy_connection_handle*) arg;
-    (*handle->transition)(handle->connection);
+    (*handle->transition)(pproxy_cb_handle_connection(handle));
     pproxy_connection_handle_free(handle);
 }
 
 static void set_connection_state_after_delay(
         struct pproxy_connection_handle *cb_handle,
         enum pproxy_connection_state to_state) {
+    struct pproxy_connection *conn =
+        pproxy_cb_handle_connection(cb_handle);
+
     switch (to_state) {
     case CONN_RECV:
         cb_handle->transition = set_connection_state_recv;
@@ -76,18 +79,18 @@ static void set_connection_state_after_delay(
          * response received from the target; and alternative approach might
          * be to clobber the target's events but that would race with completion
          * of the response. */
-        bufferevent_disable(cb_handle->connection->source_state.bev,
-            EV_READ | EV_WRITE);
+        bufferevent_disable(conn->source_state.bev, EV_READ | EV_WRITE);
         cb_handle->transition = set_connection_state_forward_after_delay;
         break;
     default:
         assert(0 && "Not supported");
     }
 
-    struct event_base *base = bufferevent_get_base(
-        cb_handle->connection->source_state.bev);
-    struct event *ev = evtimer_new(base, delayed_transition_cb, cb_handle);
-    evtimer_add(ev, &cb_handle->delay);
+    assert(!cb_handle->timer); /* sanity */
+
+    cb_handle->timer = evtimer_new(conn->handle->base,
+        delayed_transition_cb, cb_handle);
+    evtimer_add(cb_handle->timer, &cb_handle->delay);
 }
 
 static void free_source_state(struct pproxy_source_state *source) {
@@ -194,6 +197,8 @@ void pproxy_connection_free(struct pproxy_connection *conn) {
 
     free_source_state(&conn->source_state);
     free_target_state(&conn->target_state);
+
+    pproxy_connection_handle_free(&conn->cb_handle);
 
     free(conn);
 }
@@ -371,43 +376,32 @@ static int target_message_complete(struct http_parser *parser) {
 
 static int source_message_complete(struct http_parser *parser) {
     struct pproxy_connection *conn = (struct pproxy_connection*) parser->data;
-    struct pproxy_connection_handle *cb_handle = NULL;
 
     switch (conn->state) {
     case CONN_RECV_FORWARD:
         if (conn->handle->callbacks.on_request_complete) {
-            if (!pproxy_connection_handle_init(conn, &cb_handle)) {
-                (*conn->handle->callbacks.on_request_complete)(cb_handle);
-            }
+            (*conn->handle->callbacks.on_request_complete)(&conn->cb_handle);
         }
 
-        if (pproxy_connection_handle_has_delay(cb_handle)) {
-            set_connection_state_after_delay(cb_handle, CONN_FORWARD);
-            cb_handle = NULL;
+        if (pproxy_connection_handle_has_delay(&conn->cb_handle)) {
+            set_connection_state_after_delay(&conn->cb_handle, CONN_FORWARD);
         } else {
             set_connection_state_forward(conn);
         }
         break;
     case CONN_DIRECT_PARSING:
         if (conn->handle->callbacks.on_direct_connect) {
-            if (!pproxy_connection_handle_init(conn, &cb_handle)) {
-                (*conn->handle->callbacks.on_direct_connect)(cb_handle);
-            }
+            (*conn->handle->callbacks.on_direct_connect)(&conn->cb_handle);
         }
 
-        if (pproxy_connection_handle_has_delay(cb_handle)) {
-            set_connection_state_after_delay(cb_handle, CONN_DIRECT);
-            cb_handle = NULL;
+        if (pproxy_connection_handle_has_delay(&conn->cb_handle)) {
+            set_connection_state_after_delay(&conn->cb_handle, CONN_DIRECT);
         } else {
             set_connection_state_direct(conn);
         }
         break;
     default:
         assert(0 && "Unexpected state in message_complete_cb");
-    }
-
-    if (cb_handle) {
-        pproxy_connection_handle_free(cb_handle);
     }
 
     /* We're at the end of the message. Pause the parser so that we
@@ -847,25 +841,21 @@ int pproxy_connection_init(struct pproxy *handle, int fd,
     ret->handle = handle;
 
     for (;;) {
+        if (pproxy_connection_handle_init(&ret->cb_handle)) {
+            break;
+        }
+
         if (init_source_state(&ret->source_state, ret, fd)) {
             break;
         }
 
-        struct pproxy_connection_handle *cb_handle = NULL;
-
         if (handle->callbacks.on_connect) {
-            if (pproxy_connection_handle_init(ret, &cb_handle)) {
-                break;
-            }
-            (*handle->callbacks.on_connect)(cb_handle);
+            (*handle->callbacks.on_connect)(&ret->cb_handle);
         }
 
-        if (pproxy_connection_handle_has_delay(cb_handle)) {
-            set_connection_state_after_delay(cb_handle, CONN_RECV);
+        if (pproxy_connection_handle_has_delay(&ret->cb_handle)) {
+            set_connection_state_after_delay(&ret->cb_handle, CONN_RECV);
         } else {
-            if (cb_handle) {
-                pproxy_connection_handle_free(cb_handle);
-            }
             set_connection_state_recv(ret);
         }
         *conn = ret;
@@ -876,4 +866,10 @@ int pproxy_connection_init(struct pproxy *handle, int fd,
 
     free(ret);
     return -1;
+}
+
+struct pproxy_connection* pproxy_cb_handle_connection(
+        struct pproxy_connection_handle *handle) {
+    return (struct pproxy_connection*) (((char *)handle)
+            - offsetof(struct pproxy_connection, cb_handle));
 }

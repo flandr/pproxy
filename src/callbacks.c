@@ -48,7 +48,7 @@ struct pproxy* pproxy_conn_get_proxy(struct pproxy_connection_handle *handle) {
     if (!handle) {
         return NULL;
     }
-    return handle->connection->handle;
+    return pproxy_cb_handle_connection(handle)->handle;
 }
 
 void pproxy_conn_insert_pause(struct pproxy_connection_handle *handle,
@@ -59,24 +59,17 @@ void pproxy_conn_insert_pause(struct pproxy_connection_handle *handle,
     handle->delay = *tv;
 }
 
-int pproxy_connection_handle_init(struct pproxy_connection *conn,
-        struct pproxy_connection_handle **handle) {
-    struct pproxy_connection_handle *ret = (struct pproxy_connection_handle*)
-        malloc(sizeof(*ret));
-    if (!ret) {
-        return -1;
-    }
-
-    memset(ret, 0, sizeof(*ret));
-    ret->connection = conn;
-
-    *handle = ret;
-
+int pproxy_connection_handle_init(struct pproxy_connection_handle *handle) {
+    memset(handle, 0, sizeof(*handle));
     return 0;
 }
 
 void pproxy_connection_handle_free(struct pproxy_connection_handle *handle) {
-    free(handle);
+    if (handle->timer) {
+        event_del(handle->timer);
+        event_free(handle->timer);
+        handle->timer = NULL;
+    }
 }
 
 int pproxy_connection_handle_has_delay(
