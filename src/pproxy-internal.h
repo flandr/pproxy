@@ -30,6 +30,9 @@
 #include <event2/event.h>
 #include <http_parser.h>
 
+#include "pproxy/callbacks.h"
+#include "pproxy/pproxy.h"
+
 #if !defined(NDEBUG)
 #define log_debug(...) fprintf(stderr, __VA_ARGS__)
 #else
@@ -45,6 +48,7 @@ struct pproxy {
     struct evdns_base *dns_base;
     struct evconnlistener *listener;
     int run_state;
+    struct pproxy_callbacks callbacks;
 };
 
 struct conn_handle;
@@ -82,16 +86,35 @@ struct pproxy_target_state {
     struct http_parser_settings parser_settings;
 };
 
+struct pproxy_connection;
+
+/* handle for deferrable connection state */
+struct pproxy_connection_handle {
+    enum pproxy_connection_state next_state;
+    struct timeval delay;
+    int (*transition)(struct pproxy_connection *);
+    struct event *timer;
+};
+
 /* proxy connection */
 struct pproxy_connection {
     struct pproxy *handle;
     enum pproxy_connection_state state;
     struct pproxy_source_state source_state;
     struct pproxy_target_state target_state;
+    struct pproxy_connection_handle cb_handle;
 };
+
+struct pproxy_connection* pproxy_cb_handle_connection(
+        struct pproxy_connection_handle *handle);
 
 int pproxy_connection_init(struct pproxy *handle, int fd,
     struct pproxy_connection **conn);
 void pproxy_connection_free(struct pproxy_connection *conn);
+
+int pproxy_connection_handle_init(struct pproxy_connection_handle *handle);
+void pproxy_connection_handle_free(struct pproxy_connection_handle *handle);
+
+int pproxy_connection_handle_has_delay(struct pproxy_connection_handle *handle);
 
 #endif /* PPROXY_INTERNAL_H_ */

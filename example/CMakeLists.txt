@@ -13,3 +13,11 @@ add_executable(server
 target_link_libraries(server
     pproxy
 )
+
+add_executable(pausing-server
+    pausing-server.c
+)
+
+target_link_libraries(pausing-server
+    pproxy
+)

@@ -25,6 +25,7 @@
 
 #include <gtest/gtest.h>
 
+#include "pproxy/callbacks.h"
 #include "pproxy/pproxy.h"
 
 #include "util.h"
@@ -148,6 +149,36 @@ TEST_F(PproxyTest, TestPut) {
     HttpClient proxyClient("127.0.0.1", echo.port(), proxy.port());
     auto pret = proxyClient.put("", "zomg");
     ASSERT_EQ(eret, pret);
+}
+
+int connect_called = 0;
+static void connectCallback(struct pproxy_connection_handle *) {
+    ++connect_called;
+}
+int request_complete_called = 0;
+static void completeCallback(struct pproxy_connection_handle *) {
+    ++request_complete_called;
+}
+
+TEST_F(PproxyTest, TestConnectCallback) {
+    EchoServer echo;
+    echo.start();
+
+    struct pproxy_callbacks callbacks = {
+        connectCallback,
+        NULL,
+        completeCallback
+    };
+
+    ASSERT_EQ(0, pproxy_set_callbacks(handle, &callbacks));
+    PproxyServer proxy(handle);
+    proxy.start();
+
+    HttpClient proxyClient("127.0.0.1", echo.port(), proxy.port());
+    auto ret = proxyClient.get("");
+    ASSERT_EQ(200, ret.first);
+    ASSERT_EQ(1, connect_called);
+    ASSERT_EQ(1, request_complete_called);
 }
 
 } // test namespace

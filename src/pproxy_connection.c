@@ -47,6 +47,52 @@ static int target_message_complete(struct http_parser *parser);
 
 static void drive_request(struct pproxy_connection *conn);
 
+static int set_connection_state_recv(struct pproxy_connection *conn);
+static int set_connection_state_forward(struct pproxy_connection *conn);
+static int set_connection_state_forward_after_delay(
+    struct pproxy_connection *conn);
+static int set_connection_state_direct(struct pproxy_connection *conn);
+
+static void delayed_transition_cb(int sock, short which, void *arg) {
+    struct pproxy_connection_handle *handle =
+        (struct pproxy_connection_handle*) arg;
+    (*handle->transition)(pproxy_cb_handle_connection(handle));
+    pproxy_connection_handle_free(handle);
+}
+
+static void set_connection_state_after_delay(
+        struct pproxy_connection_handle *cb_handle,
+        enum pproxy_connection_state to_state) {
+    struct pproxy_connection *conn =
+        pproxy_cb_handle_connection(cb_handle);
+
+    switch (to_state) {
+    case CONN_RECV:
+        cb_handle->transition = set_connection_state_recv;
+        break;
+    case CONN_DIRECT:
+        cb_handle->transition = set_connection_state_direct;
+        break;
+    case CONN_FORWARD:
+        /* Need to disable source processing or this won't block the request
+         * from completing. This does mean that we need to buffer the entire
+         * response received from the target; and alternative approach might
+         * be to clobber the target's events but that would race with completion
+         * of the response. */
+        bufferevent_disable(conn->source_state.bev, EV_READ | EV_WRITE);
+        cb_handle->transition = set_connection_state_forward_after_delay;
+        break;
+    default:
+        assert(0 && "Not supported");
+    }
+
+    assert(!cb_handle->timer); /* sanity */
+
+    cb_handle->timer = evtimer_new(conn->handle->base,
+        delayed_transition_cb, cb_handle);
+    evtimer_add(cb_handle->timer, &cb_handle->delay);
+}
+
 static void free_source_state(struct pproxy_source_state *source) {
     if (source->buffer) {
         evbuffer_free(source->buffer);
@@ -152,6 +198,8 @@ void pproxy_connection_free(struct pproxy_connection *conn) {
     free_source_state(&conn->source_state);
     free_target_state(&conn->target_state);
 
+    pproxy_connection_handle_free(&conn->cb_handle);
+
     free(conn);
 }
 
@@ -245,6 +293,17 @@ static int set_connection_state_forward(struct pproxy_connection *conn) {
     return 0;
 }
 
+static int set_connection_state_forward_after_delay(
+        struct pproxy_connection *conn) {
+    assert(conn->state == CONN_RECV_FORWARD);
+    conn->state = CONN_FORWARD;
+
+    /* In the delay case, we've shut down processing of the source bev. */
+    bufferevent_enable(conn->source_state.bev, EV_READ | EV_WRITE);
+
+    return 0;
+}
+
 static int set_connection_state_complete(struct pproxy_connection *conn) {
     assert(conn->state == CONN_FORWARD);
     conn->state = CONN_COMPLETE;
@@ -320,10 +379,26 @@ static int source_message_complete(struct http_parser *parser) {
 
     switch (conn->state) {
     case CONN_RECV_FORWARD:
-        set_connection_state_forward(conn);
+        if (conn->handle->callbacks.on_request_complete) {
+            (*conn->handle->callbacks.on_request_complete)(&conn->cb_handle);
+        }
+
+        if (pproxy_connection_handle_has_delay(&conn->cb_handle)) {
+            set_connection_state_after_delay(&conn->cb_handle, CONN_FORWARD);
+        } else {
+            set_connection_state_forward(conn);
+        }
         break;
     case CONN_DIRECT_PARSING:
-        set_connection_state_direct(conn);
+        if (conn->handle->callbacks.on_direct_connect) {
+            (*conn->handle->callbacks.on_direct_connect)(&conn->cb_handle);
+        }
+
+        if (pproxy_connection_handle_has_delay(&conn->cb_handle)) {
+            set_connection_state_after_delay(&conn->cb_handle, CONN_DIRECT);
+        } else {
+            set_connection_state_direct(conn);
+        }
         break;
     default:
         assert(0 && "Unexpected state in message_complete_cb");
@@ -766,11 +841,23 @@ int pproxy_connection_init(struct pproxy *handle, int fd,
     ret->handle = handle;
 
     for (;;) {
+        if (pproxy_connection_handle_init(&ret->cb_handle)) {
+            break;
+        }
+
         if (init_source_state(&ret->source_state, ret, fd)) {
             break;
         }
 
-        set_connection_state_recv(ret);
+        if (handle->callbacks.on_connect) {
+            (*handle->callbacks.on_connect)(&ret->cb_handle);
+        }
+
+        if (pproxy_connection_handle_has_delay(&ret->cb_handle)) {
+            set_connection_state_after_delay(&ret->cb_handle, CONN_RECV);
+        } else {
+            set_connection_state_recv(ret);
+        }
         *conn = ret;
         return 0;
     }
@@ -779,4 +866,10 @@ int pproxy_connection_init(struct pproxy *handle, int fd,
 
     free(ret);
     return -1;
+}
+
+struct pproxy_connection* pproxy_cb_handle_connection(
+        struct pproxy_connection_handle *handle) {
+    return (struct pproxy_connection*) (((char *)handle)
+            - offsetof(struct pproxy_connection, cb_handle));
 }

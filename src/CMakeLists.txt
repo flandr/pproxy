@@ -14,6 +14,7 @@ set(pproxy_SHARED_LIBRARY
 
 # Source translation units
 set(libpproxy_SRCS
+    callbacks.c
     pproxy.c
     pproxy_connection.c
 )
