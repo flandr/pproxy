@@ -99,6 +99,7 @@ struct pproxy_connection_handle {
     struct pproxy_connection *connection;
     enum pproxy_connection_state next_state;
     struct timeval delay;
+    int (*transition)(struct pproxy_connection *);
 };
 
 int pproxy_connection_init(struct pproxy *handle, int fd,

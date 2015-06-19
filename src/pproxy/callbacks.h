@@ -39,6 +39,8 @@ struct pproxy_callbacks {
     pproxy_general_cb on_connect;
     /* Fired when transitining to direct forwarding after CONNECT. */
     pproxy_general_cb on_direct_connect;
+    /* Fired when transitioning to waiting for a server response. */
+    pproxy_general_cb on_request_complete;
 };
 
 /**
