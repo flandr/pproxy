@@ -242,9 +242,6 @@ static int set_connection_state_forward(struct pproxy_connection *conn) {
     assert(conn->state == CONN_RECV_FORWARD);
     conn->state = CONN_FORWARD;
 
-    /* disable read events on the source bufferevent */
-    bufferevent_disable(conn->source_state.bev, EV_READ);
-
     return 0;
 }
 
@@ -305,8 +302,15 @@ static int target_message_complete(struct http_parser *parser) {
     struct pproxy_connection *conn = (struct pproxy_connection*) parser->data;
 
     /* TODO: handle keep-alive? */
-    set_connection_state_complete(conn);
-    http_parser_pause(parser, 1);
+
+    if (conn->state == CONN_FORWARD) {
+        /* Source is done */
+        set_connection_state_complete(conn);
+        http_parser_pause(parser, 1);
+    } else {
+        /* Otherwise this is a PUT w/ Expect: 100-continue, probably */
+        assert(conn->state == CONN_RECV_FORWARD);
+    }
 
     return 0;
 }
