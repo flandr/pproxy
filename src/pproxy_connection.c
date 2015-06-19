@@ -452,7 +452,7 @@ static void connect_event_cb(struct bufferevent *bev, int16_t what, void *ctx) {
             log_debug("connection closed\n");
         }
         /* An error during connect means we have to free the bufferevent */
-        assert(conn->target_state.bev == 0);
+        assert(conn->target_state.bev != 0);
         bufferevent_free(bev);
         pproxy_connection_free(conn);
     }
