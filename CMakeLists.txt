@@ -12,7 +12,8 @@ endif (WIN32)
 
 # Module search path
 set(CMAKE_MODULE_PATH
-    ${CMAKE_SOURCE_DIR}/cmake
+    ${CMAKE_MODULE_PATH}
+    ${CMAKE_CURRENT_LIST_DIR}/cmake
 )
 
 # Some CMake configuration

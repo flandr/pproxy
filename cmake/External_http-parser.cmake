@@ -1,4 +1,4 @@
-set(_source "${CMAKE_CURRENT_SOURCE_DIR}/third_party/http-parser")
+set(_source "${PROJECT_SOURCE_DIR}/third_party/http-parser")
 set(_build "${CMAKE_CURRENT_BINARY_DIR}/http-parser")
 
 ExternalProject_Add(http_parser_ext
