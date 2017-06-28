@@ -5,6 +5,8 @@ ExternalProject_Add(http_parser_ext
     SOURCE_DIR ${_source}
     BINARY_DIR ${_build}
     INSTALL_COMMAND ""
+    CMAKE_ARGS
+        "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
 )
 
 include_directories("${_source}")

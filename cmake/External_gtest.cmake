@@ -6,6 +6,8 @@ ExternalProject_Add(gtest_ext
     BINARY_DIR ${_build}
     # googletest doesn't provide an install target
     INSTALL_COMMAND ""
+    CMAKE_ARGS
+        "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
 )
 
 include_directories("${_source}/include")
