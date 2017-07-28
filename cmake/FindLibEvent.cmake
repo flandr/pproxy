@@ -4,7 +4,7 @@
 FIND_PATH(LibEvent_INCLUDE_DIR NAMES event2/event.h)
 FIND_LIBRARY(LibEvent_LIBRARY NAMES event)
 FIND_LIBRARY(LibEvent_CORE_LIBRARY NAMES event_core)
-FIND_LIBRARY(LibEvent_EXTRA_LIBRARY NAMES event_extras)
+FIND_LIBRARY(LibEvent_EXTRA_LIBRARY NAMES event_extra)
 
 if (NOT WIN32)
   # Not present on Windows libevent builds
